@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from QSB.qconfig import QConfig
@@ -64,23 +65,31 @@ def set_signle(root_module, verbose: bool = False):
     apply(root_module)
 
 
-def get_alphas(root_module):
+# Not nice but need some flag to filter alphas and other params
+def get_alphas_and_set_grad_true(root_module):
     alphas = []
+    names = []
 
     def apply(m):
         for name, child in m.named_children():
             if hasattr(child, "get_alphas"):
                 alpha = getattr(child, "get_alphas")()
+                alpha.requires_grad = True
                 alphas.append(alpha)
+                names.append(name)
             else:
                 apply(child)
 
     apply(root_module)
 
-    return alphas
+    return alphas, names
 
 
-def get_flops_and_memory(root_module):
+def get_flops_and_memory(root_module, input_size: list = (1, 3, 28, 28)):
+
+    input_x = torch.randn(*input_size)
+    root_module(input_x)
+
     flops = 0
     memory = 0
 
@@ -115,3 +124,10 @@ def get_flops_and_memory(root_module):
 
 #     apply(root_module)
 #     return tuple(info)
+
+
+def prepare_and_get_params(model, qconfig, verbose=True):
+    replace_modules(model, qconfig, verbose=verbose)
+    main_parms = [p for p in model.parameters() if p.requires_grad]
+    alphas, names = get_alphas_and_set_grad_true(model)
+    return model, main_parms, alphas

@@ -93,7 +93,7 @@ class BaseConv(nn.Module):
         super(BaseConv, self).__init__()
         self.qconfig = qconfig
         self.bits = qconfig.bits
-        self.alphas = nn.Parameter(torch.ones(len(self.bits)))
+        self.alphas = nn.Parameter(torch.ones(len(self.bits))/len(self.bits), requires_grad=False)
         self.conv = FlopConv(
              in_channels=in_channels,
                 out_channels=out_channels,
@@ -118,8 +118,6 @@ class BaseConv(nn.Module):
             mem += alpha * m * bit
         return bit_ops, mem
 
-    def set_alphas(self, alphas):
-        self.alphas = alphas
 
     def get_bit(self):
         idx = torch.argmax(self.alphas)
