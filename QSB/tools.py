@@ -1,13 +1,7 @@
-import re
-import copy
-import logging
-import torch
 import torch.nn as nn
-from typing import Dict, List
-from dataclasses import asdict
 
-from qconfig import QConfig
-import layers as qlayers
+from QSB.qconfig import QConfig
+import QSB.layers as qlayers
 
 MAPPING = {
     # nn.Linear: quant.Linear,
@@ -84,3 +78,40 @@ def get_alphas(root_module):
     apply(root_module)
 
     return alphas
+
+
+def get_flops_and_memory(root_module):
+    flops = 0
+    memory = 0
+
+    def apply(module, fl, mem):
+        for name, child in module.named_children():
+            if hasattr(child, "fetch_info"):
+                f, m = getattr(child, "fetch_info")()
+                fl += f
+                mem += m
+            else:
+                apply(child, fl, mem)
+
+        return fl, mem
+
+    return apply(root_module, flops, memory)
+
+
+## Mutable approach ##
+
+# def get_flops_and_memory_(root_module):
+
+#     info = [0, 0]
+
+#     def apply(module):
+#         for name, child in module.named_children():
+#             if hasattr(child, "fetch_info"):
+#                 f, m = getattr(child, "fetch_info")()
+#                 info[0] = info[0] + f
+#                 info[1] = info[1] + m
+#             else:
+#                 apply(child)
+
+#     apply(root_module)
+#     return tuple(info)

@@ -1,9 +1,10 @@
 import torch
-import torch.nn as nn
-import warnings
-from qconfig import QConfig
 
-from quantizers import HWGQ, LsqQuan, quant_noise
+import warnings
+import torch.nn as nn
+
+from QSB.qconfig import QConfig
+from QSB.quantizers import HWGQ, LsqQuan, quant_noise
 
 QUANTIZERS = {
     "LSQ": lambda bit, weight: LsqQuan(
@@ -146,9 +147,9 @@ class SingleConv(BaseConv):
         out = self.conv(quantized_act, quantized_weight)
         return out
 
-    def _fetch_info(self):
+    def fetch_info(self):
         f, m = self.conv._fetch_info()
-        return f * self.bit * self.bit / 2, m * self.bit
+        return f * self.bit, m * self.bit
 
     def set_weights(self, weight, bias):
         self.conv.weight = weight
@@ -292,11 +293,9 @@ class SearchConv2d(nn.Module):
     def fetch_info(self):
         sum_flops = 0
         sum_memory = 0
-        for m in self.modules():
-            if isinstance(m, self.conv_func):
-                f, mem = m._fetch_info()
-                sum_flops += f
-                sum_memory += mem
+        f, mem = self.conv_func._fetch_info()
+        sum_flops += f
+        sum_memory += mem
 
         return sum_flops, sum_memory
 
