@@ -29,7 +29,7 @@ def replace_modules(root_module, qconfig: QConfig, verbose: bool = False):
             # verb(f"processing class {child} with name {name}")
             if type(child) in MAPPING:
                 extended_class = MAPPING[type(child)]
-                # verb(f"replacing {name} {child} with {extended_class}")
+                verb(f"replacing {name} {child} with {extended_class}")
                 initialized_module = extended_class.from_module(child, qconfig)
                 setattr(m, name, initialized_module)
 

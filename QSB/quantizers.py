@@ -57,7 +57,7 @@ class HWGQ(nn.Module):
 
     def forward(self, x):
         if self.bit >= 32:
-            return self.prelu(x)
+            return x
         lvls = float(2**self.bit - 1)
         clip_thr = self.step * lvls
         y = x.clamp(min=0.0, max=clip_thr)
@@ -133,4 +133,10 @@ class LsqQuan(nn.Module):
         x = x * (s_scale)
         return x
     
+class Skip(nn.Module):
+    def __init__(self):
+        super(Skip, self).__init__()
     
+    def forward(self,x):
+        return x
+        

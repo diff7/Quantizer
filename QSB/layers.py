@@ -4,13 +4,16 @@ import warnings
 import torch.nn as nn
 
 from QSB.qconfig import QConfig
-from QSB.quantizers import HWGQ, LsqQuan, quant_noise
+from QSB.quantizers import HWGQ, LsqQuan, Skip,  quant_noise
+
+
 
 QUANTIZERS = {
     "LSQ": lambda bit, weight: LsqQuan(
         bit, all_positive=False, symmetric=False, per_channel=True, weight=weight
     ),
     "HWGQ": lambda bit, weight: HWGQ(bit),
+    "SKIP": lambda bit, weight: Skip(),
 }
 
 
@@ -47,12 +50,12 @@ class FlopConv(nn.Conv2d):
         if type(value) == tuple:
             return value
 
-    def forward(self, input_x, quantized_weight):
+    def forward(self, input_x, weights):
         """
         BATCH x C x W x H
         """
         # get the same device to avoid errors
-        output = self._conv_forward(input_x, quantized_weight, bias=None)
+        output = self._conv_forward(input_x, weights, bias=self.bias)
 
         w_out = output.shape[2]
         h_out = output.shape[3]
@@ -111,10 +114,10 @@ class BaseConv(nn.Module):
 
     def _fetch_info(self):
         bit_ops, mem = 0, 0
-        b, m = self.conv._fetch_info()
+        ops, m = self.conv._fetch_info()
 
         for bit, alpha in zip(self.bits, self.alphas):
-            bit_ops += alpha * b * bit
+            bit_ops += alpha * ops * bit
             mem += alpha * m * bit
         return bit_ops, mem
 

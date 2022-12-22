@@ -23,10 +23,9 @@ model, main_params, alpha, alpha_names = prepare_and_get_params(
     model, qconfig, verbose=True
 )
 print("#" * 10)
-print("\n \n", alpha_names)
-print(len(alpha_names), len(alpha))
+print(len(alpha_names), len(alpha), len(main_params))
 
-# model(input_x)
+model(input_x)
 
 # print("FLOPS:")
 # input_size = [10, 3, 28, 28]
