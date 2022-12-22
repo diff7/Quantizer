@@ -7,10 +7,11 @@ from QSB.qconfig import QConfig
 from QSB.quantizers import HWGQ, LsqQuan, Skip,  quant_noise
 
 
+# TODO move quantizers params out
 
 QUANTIZERS = {
     "LSQ": lambda bit, weight: LsqQuan(
-        bit, all_positive=False, symmetric=False, per_channel=True, weight=weight
+        bit, all_positive=False, symmetric=False, per_channel=False, weight=weight
     ),
     "HWGQ": lambda bit, weight: HWGQ(bit),
     "SKIP": lambda bit, weight: Skip(),

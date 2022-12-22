@@ -32,7 +32,6 @@ def replace_modules(root_module, qconfig: QConfig, verbose: bool = False):
                 verb(f"replacing {name} {child} with {extended_class}")
                 initialized_module = extended_class.from_module(child, qconfig)
                 setattr(m, name, initialized_module)
-
                 searchable_params.append(initialized_module.get_alphas())
 
                 # TODO change 'conv_func' for different function names later
@@ -79,11 +78,16 @@ def set_signle(root_module, verbose: bool = False):
 
 
 def get_flops_and_memory(
-    root_module, input_size: list = (1, 3, 28, 28), device="cpu"
+    root_module, use_cached=False, input_size=None, device="cpu"
 ):
 
-    input_x = torch.randn(*input_size).to(device)
-    root_module(input_x)
+    if not use_cached:
+        assert (
+            not input_size is None
+        ), "Provide input_size to create a dummy tensor for FLOPS computation or use_cached=True"
+
+        input_x = torch.randn(*input_size).to(device)
+        root_module(input_x)
 
     flops = 0
     memory = 0

@@ -80,7 +80,7 @@ def round_pass(x):
 
 class LsqQuan(nn.Module):
     def __init__(
-        self, bit, all_positive=False, symmetric=False, per_channel=True, weight=None
+        self, bit, all_positive=False, symmetric=False, per_channel=False, weight=None
     ):
         super(LsqQuan, self).__init__()
         self.bit = bit
