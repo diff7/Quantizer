@@ -89,22 +89,20 @@ def get_flops_and_memory(
         input_x = torch.randn(*input_size).to(device)
         root_module(input_x)
 
-    flops = 0
-    memory = 0
-
-    def apply(module, fl, mem):
+    mem = []
+    fl = []
+    
+    def apply(module):
         for name, child in module.named_children():
             if hasattr(child, "fetch_info"):
                 f, m = getattr(child, "fetch_info")()
-                fl += f
-                mem += m
+                fl.append(f)
+                mem.append(m)
             else:
-                apply(child, fl, mem)
-
+                apply(child)
         return fl, mem
-
-    return apply(root_module, flops, memory)
-
+    f, m = apply(root_module)
+    return sum(f), sum(m)
 
 def prepare_and_get_params(model, qconfig, verbose=True):
     alphas, alpha_names = replace_modules(model, qconfig, verbose=verbose)
