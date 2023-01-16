@@ -51,7 +51,7 @@ def replace_modules(root_module, qconfig: QConfig, verbose: bool = False):
     return searchable_params, params_names
 
 
-def set_signle(root_module, verbose: bool = False):
+def set_signle(root_module, device='cpu',verbose: bool = False):
 
     if verbose:
         verb = print
@@ -75,6 +75,7 @@ def set_signle(root_module, verbose: bool = False):
                 apply(child)
 
     apply(root_module)
+    root_module.to(device)
 
 
 def get_flops_and_memory(
