@@ -107,8 +107,6 @@ def get_named_arch(root_module, verbose: bool = False):
             if hasattr(child, "get_arch_values"):
                 bit, alphas = getattr(child, "get_arch_values")()
                 op_name = f"{current_name}{'.' if len(current_name)>0  else ''}{name}.conv_func.alphas"
-                print(name)
-                print(op_name)
                 arch[op_name] = bit
                 arch_vector[op_name] = alphas
             else:
@@ -139,7 +137,7 @@ def set_named_arch(root_module, arch, verbose: bool = False):
         for name, child in m.named_children():
             # verb(f"processing class {child} with name {name}")
             if hasattr(child, "set_single_conv"):
-                op_name = f"{current_name}{'.' if len(current_name)>0  else ''}{name}.conv_func.alphas"                
+                op_name = f"{current_name}{'.' if len(current_name)>0  else ''}{name}.conv_func.alphas"
                 if op_name in arch:
                     bit = arch[op_name]
                     initialized_module = getattr(child, "set_single_conv")(
