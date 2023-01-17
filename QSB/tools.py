@@ -3,6 +3,11 @@ import torch.nn as nn
 from QSB.qconfig import QConfig
 import QSB.layers as qlayers
 
+
+# TODO
+# Set some arbitrary arch
+# Get an arbitrary arch
+
 MAPPING = {
     # nn.Linear: quant.Linear,
     nn.Conv2d: qlayers.SearchConv2d,
@@ -51,7 +56,7 @@ def replace_modules(root_module, qconfig: QConfig, verbose: bool = False):
     return searchable_params, params_names
 
 
-def set_signle(root_module, device='cpu',verbose: bool = False):
+def set_best_single(root_module, verbose: bool = False):
 
     if verbose:
         verb = print
@@ -62,20 +67,95 @@ def set_signle(root_module, device='cpu',verbose: bool = False):
 
     verb("\n###############################")
 
-    new_dict = root_module._modules.copy()
+    # new_dict = root_module._modules.copy()
 
     def apply(m):
         for name, child in m.named_children():
             if hasattr(child, "set_single_conv"):
                 verb(f"Setting fixed bit for {child}")
-                initialized_module = getattr(child, "set_single_conv")()
+                initialized_module = getattr(child, "set_single_conv")(
+                    use_max=True
+                )
                 setattr(m, name, initialized_module)
-                new_dict[name] = initialized_module
+                # new_dict[name] = initialized_module
             else:
                 apply(child)
 
     apply(root_module)
-    root_module.to(device)
+    return root_module
+
+
+def get_named_arch(root_module, verbose: bool = False):
+    """Returns a dict with layer names and best bit values"""
+
+    if verbose:
+        verb = print
+    else:
+
+        def verb(*args, **kwargs):
+            pass
+
+    verb("\n###############################")
+    # new_dict = root_module._modules.copy()
+
+    arch = dict()
+    arch_vector = dict()
+
+    def apply(m, current_name):
+        for name, child in m.named_children():
+            # verb(f"processing class {child} with name {name}")
+            if hasattr(child, "get_arch_values"):
+                bit, alphas = getattr(child, "get_arch_values")()
+                op_name = f"{current_name}{'.' if len(current_name)>0  else ''}{name}.conv_func.alphas"
+                print(name)
+                print(op_name)
+                arch[op_name] = bit
+                arch_vector[op_name] = alphas
+            else:
+                store_name = current_name
+                current_name = (
+                    f"{current_name}{'.' if len(current_name)>0  else ''}{name}"
+                )
+                apply(child, current_name=current_name)
+                current_name = store_name
+
+    apply(root_module, current_name="")
+    return arch, arch_vector
+
+
+def set_named_arch(root_module, arch, verbose: bool = False):
+
+    if verbose:
+        verb = print
+    else:
+
+        def verb(*args, **kwargs):
+            pass
+
+    verb("\n###############################")
+    # new_dict = root_module._modules.copy()
+
+    def apply(m, current_name):
+        for name, child in m.named_children():
+            # verb(f"processing class {child} with name {name}")
+            if hasattr(child, "set_single_conv"):
+                op_name = f"{current_name}{'.' if len(current_name)>0  else ''}{name}.conv_func.alphas"                
+                if op_name in arch:
+                    bit = arch[op_name]
+                    initialized_module = getattr(child, "set_single_conv")(
+                        bit=bit
+                    )
+                    setattr(m, name, initialized_module)
+            else:
+                store_name = current_name
+                current_name = (
+                    f"{current_name}{'.' if len(current_name)>0  else ''}{name}"
+                )
+                apply(child, current_name=current_name)
+                current_name = store_name
+
+    apply(root_module, current_name="")
+    return root_module
 
 
 def get_flops_and_memory(
@@ -92,7 +172,7 @@ def get_flops_and_memory(
 
     mem = []
     fl = []
-    
+
     def apply(module):
         for name, child in module.named_children():
             if hasattr(child, "fetch_info"):
@@ -102,8 +182,10 @@ def get_flops_and_memory(
             else:
                 apply(child)
         return fl, mem
+
     f, m = apply(root_module)
     return sum(f), sum(m)
+
 
 def prepare_and_get_params(model, qconfig, verbose=True):
     alphas, alpha_names = replace_modules(model, qconfig, verbose=verbose)

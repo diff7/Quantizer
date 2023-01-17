@@ -18,6 +18,12 @@ QUANTIZERS = {
 }
 
 
+
+def get_normalized(alpha, margin=0):
+    alphas = torch.absolute(alpha)
+    alphas = alphas / (alphas.sum() + margin)
+    return alphas
+
 class FlopConv(nn.Conv2d):
 
     """
@@ -116,8 +122,8 @@ class BaseConv(nn.Module):
     def _fetch_info(self):
         bit_ops, mem = 0, 0
         ops, m = self.conv._fetch_info()
-
-        for bit, alpha in zip(self.bits, self.alphas):
+        alphas = get_normalized(self.alphas)
+        for bit, alpha in zip(self.bits, alphas):
             bit_ops += alpha * ops * bit
             mem += alpha * m * bit
         return bit_ops, mem
@@ -130,18 +136,21 @@ class BaseConv(nn.Module):
 
     def get_weight(self):
         return self.conv.weight, self.conv.bias
+    
+    def _get_arch_values(self):
+        return self.get_bit(), get_normalized(self.alphas)
 
 
 class SingleConv(BaseConv):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.bit = 32
 
     def set_q_fucntions(self, bit):
         self.act = QUANTIZERS[self.qconfig.act_quantizer](bit, None)
         self.q_fn = QUANTIZERS[self.qconfig.weight_quantizer](
             bit, self.conv.weight
         )
+        self.bit = bit
 
     def forward(self, input_x):
         quantized_weight = self.q_fn(self.conv.weight)
@@ -197,8 +206,8 @@ class QuaNoiseConv2d(BaseConv):
         acts = self.fp_portion * input_x
 
         # rescale alphas among each other
-        alphas = self.alphas / (self.alphas.sum() + self.fp_portion)
-
+        alphas = get_normalized(self.alphas, self.fp_portion)
+        
         for alpha, bit in zip(alphas, self.bits):
             weights += alpha * quant_noise(self.conv.weight, bit)
             acts += alpha * quant_noise(input_x, bit)
@@ -222,7 +231,7 @@ class SharedQAConv2d(BaseConv):
     def forward(self, input_x):
         weights = torch.zeros_like(self.conv.weight)
         acts = torch.zeros_like(input_x)
-        alphas = self.alphas / self.alphas.sum()
+        alphas = get_normalized(self.alphas)
         for alpha, act, q_fn in zip(alphas, self.acts, self.q_fn):
             weights += alpha * q_fn(self.conv.weight)
             acts += alpha * act(input_x)
@@ -319,13 +328,18 @@ class SearchConv2d(nn.Module):
 
         return conv
 
-    def set_single_conv(self):
-        conv = SingleConv.from_module(self.conv_func.conv, self.qconfig)
-        bit = self.conv_func.get_bit()
+    def set_single_conv(self, bit=0, use_max=False):
+        if use_max:
+            bit = self.conv_func.get_bit()
+        
+        conv = SingleConv.from_module(self.conv_func.conv, self.qconfig)    
         weight, bias = self.conv_func.get_weight()
         conv.set_q_fucntions(bit)
         conv.set_weights(weight, bias)
         return conv
+    
+    def get_arch_values(self):
+        return self.conv_func._get_arch_values()
 
 
 if __name__ == "__main__":
