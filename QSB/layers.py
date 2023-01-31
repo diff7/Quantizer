@@ -124,7 +124,7 @@ class BaseConv(nn.Module):
         ops, m = self.conv._fetch_info()
         alphas = get_normalized(self.alphas)
         for bit, alpha in zip(self.bits, alphas):
-            bit_ops += alpha * ops * bit
+            bit_ops += (alpha * ops * bit**2)/2
             mem += alpha * m * bit
         return bit_ops, mem
 
@@ -160,7 +160,7 @@ class SingleConv(BaseConv):
 
     def fetch_info(self):
         f, m = self.conv._fetch_info()
-        return f * self.bit, m * self.bit
+        return (f * self.bit**2)/2, m * self.bit
 
     def set_weights(self, weight, bias):
         self.conv.weight = weight
@@ -195,7 +195,7 @@ class SingleConv(BaseConv):
 class QuaNoiseConv2d(BaseConv):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fp_portion = 1 / (len(self.bits) + 1)
+        self.fp_portion = 1 / (len(self.bits) +1)
         self.act = nn.PReLU()
 
     def forward(self, input_x):
