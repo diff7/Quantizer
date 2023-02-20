@@ -121,10 +121,9 @@ class LsqQuan(nn.Module):
         if self.bit >= 32:
             return x
 
-        if self.per_channel:
-            s_grad_scale = 1.0 / ((self.thd_pos * x.numel()) ** 0.5)
-        else:
-            s_grad_scale = 1.0 / ((self.thd_pos * x.numel()) ** 0.5)
+  
+        s_grad_scale = 1.0 / ((self.thd_pos * x.numel()) ** 0.5)
+            
         device = x.device
         s_scale = grad_scale(self.s, s_grad_scale).to(device)
         x = x / (s_scale)

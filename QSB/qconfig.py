@@ -1,12 +1,15 @@
 from typing import List
 from dataclasses import dataclass, field
+from QSB.quantizers import HWGQ, LsqQuan
+from typing import Callable
 
 
 @dataclass
 class QConfig:
     bits: List[int] = field(default_factory=lambda: [2, 4, 8])
-    act_quantizer: str = "LSQ"
-    weight_quantizer: str = "LSQ"
+
+    act_quantizer: Callable = "HWGQ"
+    weight_quantizer: Callable = "LSQ"
     noise_search: bool = False
 
 

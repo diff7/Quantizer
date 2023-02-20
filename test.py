@@ -10,10 +10,18 @@ from QSB.tools import (
     set_named_arch,
 )
 
+from QSB.quantizers import HWGQ, LsqQuan
+
 from models.simple import SimpleCNN
 from models.IMDN.architechture import IMDN
 
-qconfig = QConfig()
+weight = lambda bit, weight: LsqQuan(
+    bit, all_positive=False, symmetric=False, per_channel=False, weight=weight
+)
+
+act = lambda bit, weight: HWGQ(bit)
+
+qconfig = QConfig(weight_quantizer=weight, act_quantizer=act)
 model = SimpleCNN()
 # model = IMDN()
 
