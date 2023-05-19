@@ -44,19 +44,21 @@ class _hwgq(torch.autograd.Function):
 
 
 class HWGQ(nn.Module):
-    def __init__(self, bit=2):
+    def __init__(self, bit=2, act=None):
         super(HWGQ, self).__init__()
         self.bit = bit
         if bit < 32:
             self.step = hwgq_steps[bit]
         elif bit == 32:
-            self.prelu = nn.PReLU(init=0.1)
+            self.prelu = act
             self.step = None
         else:
             raise NotImplementedError 
 
     def forward(self, x):
         if self.bit >= 32:
+            if not self.act is None:
+                x = self.act(x)
             return x
         lvls = float(2**self.bit - 1)
         clip_thr = self.step * lvls
@@ -80,10 +82,11 @@ def round_pass(x):
 
 class LsqQuan(nn.Module):
     def __init__(
-        self, bit, all_positive=False, symmetric=False, per_channel=False, weight=None
+        self, bit, all_positive=False, symmetric=False, per_channel=False, weight=None, act=None
     ):
         super(LsqQuan, self).__init__()
         self.bit = bit
+        self.act = act
         if all_positive:
             assert not symmetric, "Positive quantization cannot be symmetric"
             # unsigned activation is quantized to [0, 2^b-1]
@@ -119,6 +122,8 @@ class LsqQuan(nn.Module):
 
     def forward(self, x):
         if self.bit >= 32:
+            if not self.act is None:
+                x = self.act(x)
             return x
 
   

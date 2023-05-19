@@ -4,23 +4,14 @@ import warnings
 import torch.nn as nn
 
 from QSB.qconfig import QConfig
-from QSB.quantizers import HWGQ, LsqQuan, Skip,  quant_noise
+from QSB.quantizers import  quant_noise
 
 
 # TODO move quantizers params out
 
-QUANTIZERS = {
-    "LSQ": lambda bit, weight: LsqQuan(
-        bit, all_positive=False, symmetric=False, per_channel=False, weight=weight
-    ),
-    "HWGQ": lambda bit, weight: HWGQ(bit),
-    "SKIP": lambda bit, weight: Skip(),
-}
-
-
 
 def get_normalized(alpha, margin=0):
-    alphas = torch.absolute(alpha)
+    alphas = nn.functional.softmax(alpha, -1)
     alphas = alphas / (alphas.sum() + margin)
     return alphas
 
@@ -146,8 +137,8 @@ class SingleConv(BaseConv):
         super().__init__(**kwargs)
 
     def set_q_fucntions(self, bit):
-        self.act = QUANTIZERS[self.qconfig.act_quantizer](bit, None)
-        self.q_fn = QUANTIZERS[self.qconfig.weight_quantizer](
+        self.act = self.qconfig.act_quantizer(bit, None)
+        self.q_fn = self.qconfig.weight_quantizer(
             bit, self.conv.weight
         )
         self.bit = bit
@@ -218,8 +209,8 @@ class SharedQAConv2d(BaseConv):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        weight_quantizer = QUANTIZERS[self.qconfig.weight_quantizer]
-        act_quantizer = QUANTIZERS[self.qconfig.act_quantizer]
+        weight_quantizer = self.qconfig.weight_quantizer
+        act_quantizer = self.qconfig.act_quantizer
 
         self.acts = nn.ModuleList(
             [act_quantizer(bit, None) for bit in self.bits]

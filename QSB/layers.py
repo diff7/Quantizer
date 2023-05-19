@@ -11,7 +11,7 @@ from QSB.quantizers import  quant_noise
 
 
 def get_normalized(alpha, margin=0):
-    alphas = torch.absolute(alpha)
+    alphas = nn.functional.softmax(alpha, -1)
     alphas = alphas / (alphas.sum() + margin)
     return alphas
 
