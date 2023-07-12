@@ -44,13 +44,15 @@ class _hwgq(torch.autograd.Function):
 
 
 class HWGQ(nn.Module):
-    def __init__(self, bit=2, act=None):
+    def __init__(self, bit=2, act=None, symmetric=False):
         super(HWGQ, self).__init__()
         self.bit = bit
+        self.symmetric = symmetric
+        
         if bit < 32:
             self.step = hwgq_steps[bit]
         elif bit == 32:
-            self.prelu = act
+            self.act = act
             self.step = None
         else:
             raise NotImplementedError 
@@ -60,10 +62,19 @@ class HWGQ(nn.Module):
             if not self.act is None:
                 x = self.act(x)
             return x
-        lvls = float(2**self.bit - 1)
-        clip_thr = self.step * lvls
-        y = x.clamp(min=0.0, max=clip_thr)
-        return _hwgq.apply(y, self.step)
+        
+        if self.symmetric:
+            lvls = 2 ** self.bit / 2
+            max_thr = (lvls-0.5)*self.step
+            min_thr = - max_thr
+        else:
+            lvls = float(2**self.bit - 1)
+            max_thr = self.step * lvls
+            min_thr = 0
+        
+        y = _hwgq.apply(x, self.step)
+        y = y.clamp(min=min_thr, max=max_thr)
+        return y
 
 
 
